@@ -7,12 +7,19 @@
 use bsp::entry;
 use defmt::*;
 use defmt_rtt as _;
-use embedded_hal::digital::OutputPin;
 use panic_probe as _;
 
+use pio_proc::pio_file;
 // Provide an alias for our BSP so we can switch targets quickly.
 // Uncomment the BSP you included in Cargo.toml, the rest of the code does not need to change.
-use rp_pico as bsp;
+use rp_pico::{
+    self as bsp,
+    hal::{
+        self,
+        gpio::{FunctionPio0, Pin},
+        pio::{PIOBuilder, PIOExt},
+    },
+};
 // use sparkfun_pro_micro_rp2040 as bsp;
 
 use bsp::hal::{
@@ -53,24 +60,51 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    // This is the correct pin on the Raspberry Pico board. On other boards, even if they have an
-    // on-board LED, it might need to be changed.
-    //
-    // Notably, on the Pico W, the LED is not connected to any of the RP2040 GPIOs but to the cyw43 module instead.
-    // One way to do that is by using [embassy](https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/wifi_blinky.rs)
-    //
-    // If you have a Pico W and want to toggle a LED with a simple GPIO output pin, you can connect an external
-    // LED to one of the GPIO pins, and reference that pin here. Don't forget adding an appropriate resistor
-    // in series with the LED.
-    let mut led_pin = pins.led.into_push_pull_output();
+    let out_pin: Pin<_, FunctionPio0, _> = pins.gpio2.into_function();
+    let _clock_pin = pins.gpio3.into_function::<hal::gpio::FunctionPio0>();
+    let _ratch_pin = pins.gpio4.into_function::<hal::gpio::FunctionPio0>();
+
+    let out_pin_id = out_pin.id().num;
+
+    // Create a pio program
+    let program = pio_file!("./src/shift_register.pio", select_program("shift_register"),);
+
+    let (mut pio0, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
+    let installed = pio0.install(&program.program).unwrap();
+
+    let (mut sm, _, mut tx) = PIOBuilder::from_installed_program(installed)
+        .out_pins(out_pin_id, 1)
+        .side_set_pin_base(out_pin_id + 1)
+        .build(sm0);
+
+    #[rustfmt::skip]
+    sm.set_pindirs([
+        (out_pin_id,     hal::pio::PinDir::Output),
+        (out_pin_id + 1, hal::pio::PinDir::Output),
+        (out_pin_id + 2, hal::pio::PinDir::Output),
+    ]);
+
+    sm.start();
+
+    let mut shift: u8 = 0;
 
     loop {
-        info!("on!");
-        led_pin.set_high().unwrap();
-        delay.delay_ms(500);
-        info!("off!");
-        led_pin.set_low().unwrap();
-        delay.delay_ms(500);
+        info!("on! (shift {})", shift);
+
+        tx.write(1 << shift);
+
+        delay.delay_ms(300);
+
+        // tx.write(u32::MAX);
+        // info!("off!");
+
+        // delay.delay_ms(10);
+
+        if shift >= 6 {
+            shift = 0;
+        } else {
+            shift += 1
+        }
     }
 }
 
