@@ -67,7 +67,7 @@ fn main() -> ! {
     let out_pin_id = out_pin.id().num;
 
     // Create a pio program
-    let program = pio_file!("./src/shift_register.pio", select_program("shift_register"),);
+    let program = pio_file!("pio/shift_register.pio", select_program("shift_register"),);
 
     let (mut pio0, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
     let installed = pio0.install(&program.program).unwrap();
