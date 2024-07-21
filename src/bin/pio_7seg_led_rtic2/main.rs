@@ -12,6 +12,7 @@ mod app {
 
     use super::*;
 
+    use defmt::info;
     use defmt_rtt as _;
     use panic_probe as _;
 
@@ -91,7 +92,7 @@ mod app {
         let (mut pio0, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
         let installed = pio0.install(&program.program).unwrap();
 
-        let (mut sm, _, mut tx) = PIOBuilder::from_installed_program(installed)
+        let (mut sm, _, tx) = PIOBuilder::from_installed_program(installed)
             .out_pins(out_pin_id, 1)
             .side_set_pin_base(out_pin_id + 1)
             .build(sm0);
@@ -104,12 +105,16 @@ mod app {
         ]);
 
         sm.start();
+        info!("State machine started");
 
         // prepare data
-        let mut data = PwmData::new();
+        let data = PwmData::new();
 
         update_data::spawn().ok();
+        info!("update_data thread started");
+
         write_to_shift_register::spawn().ok();
+        info!("write_to_shift_register thread started");
 
         (Shared { data }, Local { tx })
     }
@@ -127,6 +132,8 @@ mod app {
                 } else {
                     data.shift += 1
                 }
+
+                info!("shift: {}", data.shift);
 
                 data.shift
             });
