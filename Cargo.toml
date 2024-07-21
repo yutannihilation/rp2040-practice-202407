@@ -38,6 +38,9 @@ name = "pio_7seg_led_rtic"
 [[bin]]
 name = "pio_7seg_led_rtic2"
 
+[[bin]]
+name = "pio_7seg_led_rtic3"
+
 # cargo build/run
 [profile.dev]
 codegen-units = 1
