@@ -184,8 +184,8 @@ mod app {
                 let fract = cur_pos - cur_index;
 
                 let cur_index = cur_index as usize;
-                let prev_index = (cur_index + 7 - 1) % 7;
-                let next_index = (cur_index + 7 + 1) % 7;
+                let prev_index = if cur_index == 0 { 7 } else { cur_index - 1 };
+                let next_index = if cur_index == 7 { 0 } else { cur_index + 1 };
 
                 data.pwm_levels[prev_index] = 0;
                 data.pwm_levels[cur_index] = (255. * (1.0 - fract)) as u32;
@@ -194,10 +194,13 @@ mod app {
                 data.reflect();
             });
 
-            cur_pos = (cur_pos + 0.03) % 7.0;
+            cur_pos += 0.3;
+            if cur_pos > 7.0 {
+                cur_pos -= 7.0;
+            }
             // info!("cur_pos: {}", cur_pos);
 
-            Mono::delay(10.millis()).await;
+            Mono::delay(200.millis()).await;
         }
     }
 

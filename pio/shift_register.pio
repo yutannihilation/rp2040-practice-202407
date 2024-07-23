@@ -11,7 +11,7 @@
 .side_set 2
 
     pull  block     side 0b00
-    set   x, 7      side 0b00
+    set   x, 8      side 0b00
 loop:
     out   pins, 1   side 0b00
     jmp   x-- loop  side 0b10  ; set clock pin to HIGH to tick down
