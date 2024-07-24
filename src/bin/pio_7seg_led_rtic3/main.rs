@@ -184,23 +184,32 @@ mod app {
                 let fract = cur_pos - cur_index;
 
                 let cur_index = cur_index as usize;
-                let prev_index = if cur_index == 0 { 7 } else { cur_index - 1 };
-                let next_index = if cur_index == 7 { 0 } else { cur_index + 1 };
+                let prev_index = match cur_index {
+                    0 => 0,
+                    1 => 7,
+                    _ => cur_index - 1,
+                };
+                let next_index = if cur_index == 7 { 1 } else { cur_index + 1 };
+
+                // info!(
+                //     "pos: {}, index: {}(prev) / {}(cur) / {}(next)",
+                //     cur_pos, prev_index, cur_index, next_index
+                // );
 
                 data.pwm_levels[prev_index] = 0;
                 data.pwm_levels[cur_index] = (255. * (1.0 - fract)) as u32;
-                data.pwm_levels[next_index] = (255. * (fract - 0.4) * 1.667) as u32;
+                data.pwm_levels[next_index] = 255;
+                // data.pwm_levels[next_index] = (255. * (fract - 0.4) * 1.667) as u32;
 
                 data.reflect();
             });
 
-            cur_pos += 0.3;
-            if cur_pos > 7.0 {
-                cur_pos -= 7.0;
+            cur_pos += 0.03;
+            if cur_pos > 8.0 {
+                cur_pos -= 8.0;
             }
-            // info!("cur_pos: {}", cur_pos);
 
-            Mono::delay(200.millis()).await;
+            Mono::delay(10.millis()).await;
         }
     }
 
