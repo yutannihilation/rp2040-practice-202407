@@ -86,19 +86,14 @@ fn main() -> ! {
 
     sm.start();
 
-    let mut shift: u8 = 0;
+    let mut shift: u8 = 1;
 
     loop {
-        info!("on! (shift {})", shift);
+        info!("on! (shift {:08b})", 1 << shift);
 
-        tx.write(1 << shift);
+        tx.write(1 << (7 - shift));
 
-        delay.delay_ms(300);
-
-        // tx.write(u32::MAX);
-        // info!("off!");
-
-        // delay.delay_ms(10);
+        delay.delay_ms(200);
 
         if shift >= 6 {
             shift = 0;
