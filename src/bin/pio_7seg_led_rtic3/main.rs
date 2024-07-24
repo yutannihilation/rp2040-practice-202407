@@ -95,7 +95,10 @@ mod app {
         tx: Tx<rp_pico::hal::pio::PIO0SM0>,
 
         // current position
-        cur_pos: f32,
+        phase: f32,
+
+        cur_index: usize,
+        next_index: usize,
     }
 
     #[init]
@@ -167,47 +170,46 @@ mod app {
         repeat_pwm::spawn().ok();
         info!("repeat_pwm thread started");
 
-        (Shared { data }, Local { tx, cur_pos: 0.0 })
+        (
+            Shared { data },
+            Local {
+                tx,
+                phase: 0.0,
+                cur_index: 0,
+                next_index: 0,
+            },
+        )
     }
 
     #[task(
         shared = [data],
-        local = [cur_pos],
+        local = [phase, cur_index, next_index],
     )]
     async fn update_data(c: update_data::Context) {
         let mut data = c.shared.data;
-        let mut cur_pos = *c.local.cur_pos;
+        let mut phase = *c.local.phase;
+        let mut cur_index = *c.local.cur_index;
+        let mut next_index = *c.local.next_index;
 
         loop {
-            data.lock(|data| {
-                let cur_index = super::floor(cur_pos);
-                let fract = cur_pos - cur_index;
+            phase += 0.03;
 
-                let cur_index = cur_index as usize;
-                let prev_index = match cur_index {
-                    0 => 0,
-                    1 => 7,
-                    _ => cur_index - 1,
-                };
-                let next_index = if cur_index == 7 { 1 } else { cur_index + 1 };
+            data.lock(|data: &mut PwmData| {
+                if phase >= 1.0 {
+                    // reset the current segment
+                    data.pwm_levels[cur_index] = 0;
 
-                // info!(
-                //     "pos: {}, index: {}(prev) / {}(cur) / {}(next)",
-                //     cur_pos, prev_index, cur_index, next_index
-                // );
+                    cur_index = next_index;
+                    next_index = next_index % 7 + 1;
 
-                data.pwm_levels[prev_index] = 0;
-                data.pwm_levels[cur_index] = (255. * (1.0 - fract)) as u32;
-                data.pwm_levels[next_index] = 255;
-                // data.pwm_levels[next_index] = (255. * (fract - 0.4) * 1.667) as u32;
+                    phase -= 1.0;
+                }
+
+                data.pwm_levels[cur_index] = (255. * (1.0 - phase)) as u32;
+                data.pwm_levels[next_index] = (255. * (phase - 0.4) * 1.667) as u32;
 
                 data.reflect();
             });
-
-            cur_pos += 0.03;
-            if cur_pos > 8.0 {
-                cur_pos -= 8.0;
-            }
 
             Mono::delay(10.millis()).await;
         }
