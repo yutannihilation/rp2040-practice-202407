@@ -7,8 +7,6 @@
 use rtic_monotonics::rp2040::prelude::*;
 rp2040_timer_monotonic!(Mono);
 
-use rp2040_practice_203407::floor;
-
 #[rtic::app(device = rp_pico::hal::pac, peripherals = true)]
 mod app {
 
@@ -191,6 +189,8 @@ mod app {
         let mut cur_index = *c.local.cur_index;
         let mut next_index = *c.local.next_index;
 
+        const IDX: [usize; 8] = [1, 2, 3, 4, 5, 6, 7, 4]; // 0 = nowhere
+
         loop {
             phase += 0.03;
 
@@ -200,18 +200,18 @@ mod app {
                     data.pwm_levels[cur_index] = 0;
 
                     cur_index = next_index;
-                    next_index = next_index % 7 + 1;
+                    next_index = (next_index + 1) % 8;
 
                     phase -= 1.0;
                 }
 
-                data.pwm_levels[cur_index] = (255. * (1.0 - phase)) as u32;
-                data.pwm_levels[next_index] = (255. * (phase - 0.4) * 1.667) as u32;
+                data.pwm_levels[IDX[cur_index]] = (255. * (1.0 - phase)) as u32;
+                data.pwm_levels[IDX[next_index]] = (255. * (phase - 0.4) * 1.667) as u32;
 
                 data.reflect();
             });
 
-            Mono::delay(10.millis()).await;
+            Mono::delay(5.millis()).await;
         }
     }
 
